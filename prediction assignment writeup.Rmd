@@ -1,0 +1,105 @@
+---
+title: "Prediction Assignment Writeup"
+author: "anaslartiste94"
+date: "01/01/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Synopsis
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. 
+
+## Analysis
+
+Loading useful libraries:
+
+```{r echo=T}
+# load library
+library(caret)
+```
+
+First we download the data and load it into training and testing:
+
+```{r echo=T}
+# Download the training and testing datasets
+if (!file.exists("pml-training.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv",method = "curl")
+}
+if (!file.exists("pml-testing.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv",method = "curl")
+}
+training = read.csv("pml-training.csv", na.strings=c('#DIV/0!', '', 'NA'), header=T)
+testing = read.csv("pml-testing.csv", na.strings=c('#DIV/0!', '', 'NA'), header=T)
+```
+
+There are 159 variables and one outcome:
+
+```{r echo=T}
+length(names(training))
+```
+
+We split the training set into two datasets; validation (30%) and training set (70%):s 
+
+```{r echo=T}
+inTrain = createDataPartition(training$classe,
+p=0.70, list=FALSE)
+validation = training[-inTrain,]
+training = training[inTrain,]
+```
+
+We now proceed to dimension reduction by removing near zero variables and variables with mostly NAs:
+
+```{r echo=T}
+# Remove near zero variables
+nzv <- nearZeroVar(training)
+training <- training[,-nzv]
+validation <- validation[,-nzv]
+
+# Remove mostly NA variables
+mostlyNA <- sapply(training,function(x) mean(is.na(x))) > 0.95
+training <- training[,mostlyNA==FALSE]
+validation <- validation[,mostlyNA==FALSE]
+```
+
+```{r echo=T}
+length(names(training))
+```
+
+We went from 159 variables to 58 variables.
+
+```{r echo=T}
+(unique(training$classe))
+```
+
+Model training:
+
+```{r echo=T}
+modelFit = train(classe ~ .,
+                 method="gbm",
+                 preProc = "pca",
+                 trControl = trainControl(method="repeatedcv",number = 5,repeats = 1),
+                 data=training)
+```
+
+We see now how the model performs on the validation dataset:
+
+```{r echo=T}
+prediction.validation <- predict(modelFit, validation)
+conf.matrix <- confusionMatrix(prediction.validation, factor(validation$classe))
+print(conf.matrix)
+```
+We can now apply the model to predict the testing dataset:
+
+```{r echo=T}
+prediction.testing <- predict(modelFit, testing)
+print(prediction.testing)
+```
+
