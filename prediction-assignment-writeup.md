@@ -451,5 +451,5 @@ We can now apply the model to predict the testing dataset:
     prediction.testing <- predict(modelFit, testing)
     print(prediction.testing)
 
-    ##  [1] A A A A A A A A A A A A A A A A A A A A
+    ##  [1] A A A A A B D B A A A A B A E A A B B B
     ## Levels: A B C D E
